@@ -358,7 +358,7 @@ class Term():
     
 class Polynomial(List):
 
-    def __init__(self, coefficients=None, bounds=None) -> None:
+    def __init__(self, coefficients=None, bounds=None, polynomial=None) -> None:
         """
         bounds: range from start exponent to end exponent
         """
@@ -373,7 +373,10 @@ class Polynomial(List):
 
         # Doing a blank initialization 
         if success and okayToContinue:
-            if coefficients is None or bounds is None:
+            if polynomial is not None:
+                result = polynomial
+                okayToContinue = False 
+            elif coefficients is None or bounds is None:
                 okayToContinue = False 
 
         if success and okayToContinue:
@@ -438,9 +441,12 @@ class Polynomial(List):
 
     def __DoDivision(self, numerator, denominator):
         result = Polynomial()
+        remainder = Polynomial()
         okayToContinue = True 
         tempTerm = Term()
         newTerm = Term()
+        tempResult = Polynomial()
+        tempDenominator = Polynomial()
 
         if okayToContinue:
             newTerm = numerator[0] / denominator[0]
@@ -451,11 +457,12 @@ class Polynomial(List):
                 result.append(newTerm)
 
         if okayToContinue:
+            tempDenominator = Polynomial(polynomial = denominator.copy())
             index = 0
-            count = len(denominator)
+            count = len(tempDenominator)
             while index < count and okayToContinue:
                 if okayToContinue:
-                    tempTerm = denominator[index]
+                    tempTerm = tempDenominator[index]
                     if tempTerm is None: 
                         okayToContinue = False 
                         log.Fatal("Null term")
@@ -467,29 +474,57 @@ class Polynomial(List):
                         log.Fatal("Null term")
                 
                 if okayToContinue:
-                    denominator[index] = tempTerm
+                    tempDenominator[index] = tempTerm
 
                 index += 1
         
         if okayToContinue:
-            numerator, denominator = Polynomial.MatchLength(numerator, denominator)
+            numerator, tempDenominator = Polynomial.MatchLength(
+                numerator, tempDenominator
+            )
             if numerator is None:
                 okayToContinue = False 
-            elif denominator is None:
+            elif tempDenominator is None:
                 okayToContinue = False 
             
             if okayToContinue is False:
                 log.Fatal("Received null numerator or denominator")
         
         if okayToContinue:
-            if len(numerator) != len(denominator):
+            if len(numerator) != len(tempDenominator):
                 okayToContinue = False 
 
         # subtract polynomials 
         if okayToContinue:
-            result = numerator - denominator
+            remainder = numerator - tempDenominator
 
-        return result 
+            if (len(denominator) < len(remainder)) and (remainder.zero is False):
+                tempResult, remainder = self.__DoDivision(
+                    Polynomial(polynomial=remainder[1:len(remainder)]), 
+                    denominator
+                )
+                
+                if tempResult is None:
+                    okayToContinue = False 
+                    log.Fatal("Tempresult is null")
+                elif remainder is None:
+                    okayToContinue = False 
+                    log.Fatal("remainder is null")
+            else:
+                okayToContinue = False 
+        
+        if okayToContinue:
+            if tempResult.zero is False:
+                result += tempResult
+
+        return result, remainder
+    
+    @property
+    def zero(self):
+        for term in self:
+            if term.fCoefficient != 0:
+                return False
+        return True 
 
     def __sub__(self, otherPolynomial):
         result = Polynomial()
