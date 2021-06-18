@@ -345,6 +345,16 @@ class Term():
             exponent    = self.fExponent + otherTerm.fExponent
         )
 
+    def __sub__(self, otherTerm):
+        result = None 
+
+        if self.fExponent == otherTerm.fExponent:
+            result = Term(
+                coefficient = self.fCoefficient - otherTerm.fCoefficient,
+                exponent    = self.fExponent
+            )
+
+        return result 
     
 class Polynomial(List):
 
@@ -424,7 +434,7 @@ class Polynomial(List):
         return firstPolynomial, secondPolynomial 
     
     def __truediv__(self, otherPolynomial):
-        return self.__DoDivision(self.copy(), otherPolynomial)
+        return self.__DoDivision(self, otherPolynomial)
 
     def __DoDivision(self, numerator, denominator):
         result = Polynomial()
@@ -462,6 +472,52 @@ class Polynomial(List):
                 index += 1
         
         if okayToContinue:
-            pass 
+            numerator, denominator = Polynomial.MatchLength(numerator, denominator)
+            if numerator is None:
+                okayToContinue = False 
+            elif denominator is None:
+                okayToContinue = False 
+            
+            if okayToContinue is False:
+                log.Fatal("Received null numerator or denominator")
+        
+        if okayToContinue:
+            if len(numerator) != len(denominator):
+                okayToContinue = False 
+
+        # subtract polynomials 
+        if okayToContinue:
+            result = numerator - denominator
+
+        return result 
+
+    def __sub__(self, otherPolynomial):
+        result = Polynomial()
+
+        result = self.__DoSubtraction(self, otherPolynomial)
+
+        return result
+
+    def __DoSubtraction(self, first, second):
+        result = Polynomial()
+        tempTerm = None 
+        error = False
+
+        for firstTerm in first:
+            for secondTerm in second:
+                if firstTerm.fExponent == secondTerm.fExponent:
+                    tempTerm = firstTerm - secondTerm
+                    if tempTerm is None:
+                        log.Fatal("Null term")
+                        error = True 
+                        break 
+                    else:
+                        result.append(firstTerm - secondTerm)
+                        break 
+            
+            if error:
+                log.Error("Error occured, received null term")
+                result = None 
+                break 
 
         return result 
