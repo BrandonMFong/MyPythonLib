@@ -8,6 +8,11 @@ import math
 
 log = Logger(noTime=True)
 
+# Forward Declarations
+class List(list):       pass
+class Polynomial(List): pass
+class Term():           pass 
+
 def subtraction(a, b):
     return a - b 
 
@@ -21,6 +26,87 @@ def division(a, b):
     if b == 0:
         raise ZeroDivisionError('Not a good thing')
     return a / b
+
+def DoesContainOrderedTerm(polynomial: Polynomial, term: Term):
+    """
+    Returns true if the polynomial has a term with the same order as term 
+    """
+    result = False 
+    okayToContinue = True 
+    index = 0
+    count = len(polynomial)
+    tempTerm = Term()
+    
+    while okayToContinue and index < count and result == False:
+        tempTerm = polynomial[index]
+        if tempTerm is not None:
+            if tempTerm.fExponent == term.fExponent:
+                result = True
+        else: 
+            log.Fatal("Received a null term")
+            okayToContinue = False
+        index += 1
+
+    return result
+
+def InsertNullTerms(firstPolynomial: Polynomial, secondPolynomial: Polynomial):
+    okayToContinue = True 
+    index = 0
+    count = 0
+    tempTerm = Term()
+    contains = False 
+
+    if okayToContinue:
+        index = 0 
+        count = len(firstPolynomial)
+        while index < count and okayToContinue: 
+            if okayToContinue:
+                tempTerm = firstPolynomial[index]
+                if tempTerm is None:
+                    okayToContinue = False 
+                    log.Fatal("Null term")
+
+            if okayToContinue:
+                contains = False 
+                contains = DoesContainOrderedTerm(
+                    polynomial = secondPolynomial,
+                    term = tempTerm
+                )
+
+                # If the polynomial does not contain it then 
+                # insert a zeroed out term 
+                if contains is False:
+                    secondPolynomial.append(Term(
+                        coefficient = 0,
+                        exponent    = tempTerm.fExponent
+                    ))
+            index += 1 
+
+    return firstPolynomial, secondPolynomial 
+
+def MatchPolynomialLengths(firstPolynomial, secondPolynomial):
+    okayToContinue = True 
+
+    if okayToContinue:
+        secondPolynomial, firstPolynomial = InsertNullTerms(secondPolynomial, firstPolynomial)
+        if firstPolynomial is None:
+            okayToContinue = False 
+        elif secondPolynomial is None:
+            okayToContinue = False 
+
+    if okayToContinue:
+        firstPolynomial, secondPolynomial = InsertNullTerms(firstPolynomial, secondPolynomial)
+        if firstPolynomial is None:
+            okayToContinue = False 
+        elif secondPolynomial is None:
+            okayToContinue = False 
+
+    if okayToContinue is False:
+        firstPolynomial = None 
+        secondPolynomial = None
+        log.Error("Error in inserting NULL terms")
+
+    return firstPolynomial, secondPolynomial
 
 class List(list):
     def Contains(self, value):
@@ -236,13 +322,38 @@ class Term():
     def __getitem__(self,variable):
         return math.pow(self.fCoefficient * variable, self.fExponent)
 
+    def __truediv__(self, otherTerm):
+        result = None 
+        okayToContinue = True 
+
+        if okayToContinue:
+            if otherTerm.fCoefficient == 0:
+                okayToContinue = False 
+                log.Fatal("Cannot do 0 division")
+
+        if okayToContinue:
+            result = Term(
+                coefficient = self.fCoefficient / otherTerm.fCoefficient, 
+                exponent    = self.fExponent - otherTerm.fExponent
+            )
+            
+        return result 
+    
+    def __mul__(self, otherTerm):
+        return Term(
+            coefficient = self.fCoefficient * otherTerm.fCoefficient, 
+            exponent    = self.fExponent + otherTerm.fExponent
+        )
+
+    
 class Polynomial(List):
 
-    def __init__(self, coefficients, bounds) -> None:
+    def __init__(self, coefficients=None, bounds=None) -> None:
         """
         bounds: range from start exponent to end exponent
         """
         success = True 
+        okayToContinue = True 
         result = List()
         errMessage = "Init error"
         exponents = List()
@@ -250,12 +361,17 @@ class Polynomial(List):
         count = 0
         tempTerm = None
 
-        if success:
+        # Doing a blank initialization 
+        if success and okayToContinue:
+            if coefficients is None or bounds is None:
+                okayToContinue = False 
+
+        if success and okayToContinue:
             if len(bounds) != 2:
                 success = False
                 errMessage = "bounds must be length two"
 
-        if success:
+        if success and okayToContinue:
             exponents = List.ListWithRange(bounds)
             if exponents[0] != bounds[0]:
                 success = False
@@ -265,12 +381,12 @@ class Polynomial(List):
             if success is False:
                 errMessage = "bounds construction error"
 
-        if success:
+        if success and okayToContinue:
             if len(coefficients) != len(exponents):
                 success = False 
                 errMessage = "The bounds you provided does not match the number of coefficients for this polynomial"
         
-        if success:
+        if success and okayToContinue:
             index = 0
             count = len(coefficients)
             while index < count and success:
@@ -291,3 +407,61 @@ class Polynomial(List):
             super().__init__(result)
         else:
             raise Exception(errMessage)
+
+    @staticmethod
+    def MatchLength(firstPolynomial, secondPolynomial):
+        """
+        Based on the exponents of each term, matches length 
+        """
+
+        firstPolynomial, secondPolynomial = MatchPolynomialLengths(
+            firstPolynomial, secondPolynomial
+        ) 
+
+        if len(firstPolynomial) != len(secondPolynomial):
+            log.Fatal("Lengths do not match")
+
+        return firstPolynomial, secondPolynomial 
+    
+    def __truediv__(self, otherPolynomial):
+        return self.__DoDivision(self.copy(), otherPolynomial)
+
+    def __DoDivision(self, numerator, denominator):
+        result = Polynomial()
+        okayToContinue = True 
+        tempTerm = Term()
+        newTerm = Term()
+
+        if okayToContinue:
+            newTerm = numerator[0] / denominator[0]
+            if newTerm is None:
+                okayToContinue = False
+                log.Fatal("Null term")
+            else:
+                result.append(newTerm)
+
+        if okayToContinue:
+            index = 0
+            count = len(denominator)
+            while index < count and okayToContinue:
+                if okayToContinue:
+                    tempTerm = denominator[index]
+                    if tempTerm is None: 
+                        okayToContinue = False 
+                        log.Fatal("Null term")
+
+                if okayToContinue:
+                    tempTerm = tempTerm * newTerm
+                    if tempTerm is None: 
+                        okayToContinue = False 
+                        log.Fatal("Null term")
+                
+                if okayToContinue:
+                    denominator[index] = tempTerm
+
+                index += 1
+        
+        if okayToContinue:
+            pass 
+
+        return result 
