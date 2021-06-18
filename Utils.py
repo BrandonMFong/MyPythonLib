@@ -28,17 +28,26 @@ class List(list):
 
     @staticmethod
     def ListWithRange(boundRange):
+        order = 0
         success = True 
 
-        if isinstance(boundRange, list):
+        if isinstance(boundRange, list) is False:
             success = False
         elif len(boundRange) != 2:
             success = False
+        elif boundRange[0] == boundRange[1]:
+            success = False 
         
         if success is False:
             raise Exception("The input must be a value like [start, end]")
 
-        return List([range(boundRange[0], boundRange[1])])
+        if success:
+            if boundRange[0] < boundRange[1]:
+                order = 1
+            else:
+                order = -1
+
+        return List([*range(boundRange[0], boundRange[1]+order, order)])
 
     def __sub__(self,other):
         return self.OverloadingOperations(self, other, subtraction)
@@ -211,3 +220,74 @@ class Sine(Wave):
             start       = self.fStart,
             end         = self.fEnd
         )
+
+class Term():
+    """
+    Term
+    """
+    def __init__(self, coefficient=1.0, exponent=1.0) -> None:
+        success = True 
+        self.fCoefficient = coefficient
+        self.fExponent = exponent
+
+        if success is False:
+            raise Exception("Error")
+
+    def __getitem__(self,variable):
+        return math.pow(self.fCoefficient * variable, self.fExponent)
+
+class Polynomial(List):
+
+    def __init__(self, coefficients, bounds) -> None:
+        """
+        bounds: range from start exponent to end exponent
+        """
+        success = True 
+        result = List()
+        errMessage = "Init error"
+        exponents = List()
+        index = 0
+        count = 0
+        tempTerm = None
+
+        if success:
+            if len(bounds) != 2:
+                success = False
+                errMessage = "bounds must be length two"
+
+        if success:
+            exponents = List.ListWithRange(bounds)
+            if exponents[0] != bounds[0]:
+                success = False
+            elif exponents[len(exponents) - 1] != bounds[1]:
+                success = False 
+
+            if success is False:
+                errMessage = "bounds construction error"
+
+        if success:
+            if len(coefficients) != len(exponents):
+                success = False 
+                errMessage = "The bounds you provided does not match the number of coefficients for this polynomial"
+        
+        if success:
+            index = 0
+            count = len(coefficients)
+            while index < count and success:
+                if success:
+                    tempTerm = Term(
+                        coefficient = coefficients[index],
+                        exponent = exponents[index]
+                    )
+                    if tempTerm is None:
+                        success = False 
+                        errMessage = "could not generate term"
+                if success:
+                    result.append(tempTerm)
+
+                index += 1
+
+        if success:
+            super().__init__(result)
+        else:
+            raise Exception(errMessage)
