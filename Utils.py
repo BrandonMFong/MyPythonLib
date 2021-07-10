@@ -13,6 +13,12 @@ class List(list):       pass
 class Polynomial(List): pass
 class Term():           pass 
 
+
+def GetPercentage(val):
+    result = val * 100
+    result = round(result)
+    return result
+    
 def subtraction(a, b):
     return a - b 
 

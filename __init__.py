@@ -7,3 +7,5 @@ from .Logger import Logger
 from .Utils import Sine
 from .Utils import List
 from .Utils import Polynomial
+from .Utils import GetPercentage
+from . import NurseryRhymes
